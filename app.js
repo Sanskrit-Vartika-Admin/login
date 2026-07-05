@@ -95,14 +95,14 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 function logoutAdmin() {
   auth.signOut().then(() => {
     adminUserList = [];
-    document.getElementById('admin-users-body').innerHTML = '<tr><td colspan="7" style="text-align: center;">Logged out.</td></tr>';
+    document.getElementById('admin-users-body').innerHTML = '<tr><td colspan="8" style="text-align: center;">Logged out.</td></tr>';
   });
 }
 
 // --- CORE DASHBOARD LOGIC (STUDENTS) ---
 async function loadAdminDashboard() {
   const tbody = document.getElementById('admin-users-body');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Fetching data from Cloud... Please wait.</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Fetching data from Cloud... Please wait.</td></tr>';
 
   try {
     const fetchType = document.getElementById('admin-fetch-type').value;
@@ -135,8 +135,7 @@ async function loadAdminDashboard() {
       data.computedStatus = "free";
       let hasActive = false, hasExpired = false;
 
-      // Check all 4 pass types precisely
-      ['combo', 'batch', 'sanskrit', 'general'].forEach(p => {
+      Object.keys(passes).forEach(p => {
         if (passes[p]) {
           if (new Date(passes[p]) > now) hasActive = true;
           else hasExpired = true;
@@ -151,7 +150,7 @@ async function loadAdminDashboard() {
 
     filterAndRenderAdminTable(); 
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Error: ${error.message}</td></tr>`;
   }
 }
 
@@ -167,7 +166,7 @@ async function fetchSingleUserByEmail() {
   btn.disabled = true;
 
   const tbody = document.getElementById('admin-users-body');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Executing 1-Read Query... Please wait.</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Executing 1-Read Query... Please wait.</td></tr>';
 
   try {
     // 🎯 The exact query: Limit to 1 to guarantee zero waste!
@@ -176,7 +175,7 @@ async function fetchSingleUserByEmail() {
     if (snapshot.empty) {
       adminUserList = [];
       document.getElementById('admin-user-count').textContent = "0";
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #D32F2F;">No student found registered with email: <strong>${escapeHTML(emailInput)}</strong></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #D32F2F;">No student found registered with email: <strong>${escapeHTML(emailInput)}</strong></td></tr>`;
       return;
     }
 
@@ -191,8 +190,8 @@ async function fetchSingleUserByEmail() {
       data.computedStatus = "free";
       let hasActive = false, hasExpired = false;
 
-      // Compute VIP Status exactly like the main dashboard
-      ['combo', 'batch', 'sanskrit', 'general'].forEach(p => {
+      // 🚀 FIX: Dynamic loop for Single Fetch!
+      Object.keys(passes).forEach(p => {
         if (passes[p]) {
           if (new Date(passes[p]) > now) hasActive = true;
           else hasExpired = true;
@@ -214,7 +213,7 @@ async function fetchSingleUserByEmail() {
     showToast("✅ Student loaded successfully! (Cost: 1 Read)");
     
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">Error: ${error.message}</td></tr>`;
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
@@ -250,7 +249,7 @@ function filterAndRenderAdminTable() {
   const tbody = document.getElementById('admin-users-body');
   
   if (currentFilteredUsers.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-light);">No students match this criteria.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light);">No students match this criteria.</td></tr>';
     return;
   }
 
@@ -266,14 +265,15 @@ function filterAndRenderAdminTable() {
       let activeTags = [];
       let validityHTML = '';
       
-      const pColors = { combo: '#9C27B0', batch: '#E65100', sanskrit: '#1565C0', general: '#2E7D32' };
+      const pColors = { batch: '#E65100', sanskrit: '#1565C0', bengali: '#9C27B0', philosophy: '#00838F', general: '#2E7D32' };
       
-      ['combo', 'batch', 'sanskrit', 'general'].forEach(p => {
-        if (data.passes && data.passes[p]) {
+      Object.keys(data.passes || {}).forEach(p => {
+        if (data.passes[p]) {
           const expDate = new Date(data.passes[p]);
           if (expDate > now) {
             activeTags.push(p.toUpperCase());
-            validityHTML += `<div style="font-size:0.75rem; color:${pColors[p]}; margin-bottom:2px; font-weight: bold;">${p.toUpperCase()}: <span style="color:var(--text-mid); font-weight:normal;">${expDate.toLocaleDateString('en-IN')}</span></div>`;
+            const cColor = pColors[p] || '#1565C0'; // Fallback color
+            validityHTML += `<div style="font-size:0.75rem; color:${cColor}; margin-bottom:2px; font-weight: bold;">${p.toUpperCase()}: <span style="color:var(--text-mid); font-weight:normal;">${expDate.toLocaleDateString('en-IN')}</span></div>`;
           }
         }
       });
@@ -282,11 +282,20 @@ function filterAndRenderAdminTable() {
     }
 
     let waLink = data.whatsapp ? `<a href="https://wa.me/${data.whatsapp.replace(/\D/g,'')}" target="_blank" style="color: #25D366; font-weight: bold; text-decoration: underline;">${data.whatsapp}</a>` : '—';
+    
+    // 🚀 Dynamically render the Core Subject Badge
+    let coreSubjDisplay = 'Sanskrit';
+    let coreColor = '#1565C0'; // Blue for Sanskrit
+    if (data.coreSubject === 'bengali') { coreSubjDisplay = 'Bengali'; coreColor = '#9C27B0'; }
+    else if (data.coreSubject === 'philosophy') { coreSubjDisplay = 'Philosophy'; coreColor = '#00838F'; }
+    
+    let coreBadge = `<span style="border: 1px solid ${coreColor}; color: ${coreColor}; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: bold; background: rgba(255,255,255,0.8);">${coreSubjDisplay}</span>`;
 
     html += `
       <tr>
         <td style="font-weight: 600; color: var(--brown);">${escapeHTML(data.name || 'Unknown')}</td>
         <td style="color: var(--text-mid); font-size: 0.85rem;">${escapeHTML(data.email)}</td>
+        <td>${coreBadge}</td>
         <td>${waLink}</td>
         <td style="color: var(--text-light); font-size: 0.85rem;">${dateJoined}</td>
         <td>${vipBadge}</td>
@@ -314,25 +323,40 @@ function openAdminEdit(uid) {
     return isNaN(d) ? '' : d.toISOString().split('T')[0]; // 🚀 SAFEGUARD: Prevents crashes on corrupted DB dates!
   };
   
-  document.getElementById('admin-pass-combo').value = formatD(p.combo);
-  document.getElementById('admin-pass-batch').value = formatD(p.batch);
-  document.getElementById('admin-pass-sanskrit').value = formatD(p.sanskrit);
+  // Wire up the inputs!
   document.getElementById('admin-pass-general').value = formatD(p.general);
+  document.getElementById('admin-pass-sanskrit').value = formatD(p.sanskrit);
+  document.getElementById('admin-pass-bengali').value = formatD(p.bengali);
+  document.getElementById('admin-pass-philosophy').value = formatD(p.philosophy);
+  document.getElementById('admin-pass-batch').value = formatD(p.batch);
 
   document.getElementById('admin-edit-save-btn').onclick = () => saveAdminEdit(uid);
   document.getElementById('admin-edit-modal').style.display = 'flex';
+}
+
+function applyQuickDays() {
+  const days = parseInt(document.getElementById('quick-add-days').value);
+  const targetId = document.getElementById('quick-add-target').value;
+  if (!days || days <= 0) return showToast("⚠️ Enter a valid number of days");
+  
+  const newDate = new Date();
+  newDate.setDate(newDate.getDate() + days);
+  document.getElementById(targetId).value = newDate.toISOString().split('T')[0];
+  showToast(`Calculated: ${days} days added from today!`);
 }
 
 async function saveAdminEdit(uid) {
   const btn = document.getElementById('admin-edit-save-btn');
   btn.textContent = "Saving..."; btn.disabled = true;
 
+  // Save the new inputs to the database!
   const getIso = (val) => val ? new Date(val).toISOString() : null;
   const newPasses = {
-    combo: getIso(document.getElementById('admin-pass-combo').value),
-    batch: getIso(document.getElementById('admin-pass-batch').value),
+    general: getIso(document.getElementById('admin-pass-general').value),
     sanskrit: getIso(document.getElementById('admin-pass-sanskrit').value),
-    general: getIso(document.getElementById('admin-pass-general').value)
+    bengali: getIso(document.getElementById('admin-pass-bengali').value),
+    philosophy: getIso(document.getElementById('admin-pass-philosophy').value),
+    batch: getIso(document.getElementById('admin-pass-batch').value)
   };
 
   let hasActive = false;
@@ -345,7 +369,7 @@ async function saveAdminEdit(uid) {
     showToast("✅ Student passes updated!");
     document.getElementById('admin-edit-modal').style.display = 'none';
     
-    // 🚀 BUG FIX: Update the local RAM array instead of doing a massive database re-fetch!
+    // Update the local RAM array instead of doing a massive database re-fetch!
     const userIndex = adminUserList.findIndex(u => u.uid === uid);
     if (userIndex !== -1) {
       adminUserList[userIndex].passes = newPasses;
@@ -354,7 +378,7 @@ async function saveAdminEdit(uid) {
       // Re-calculate their VIP status locally
       let isStillVIP = false;
       let isExpired = false;
-      ['combo', 'batch', 'sanskrit', 'general'].forEach(p => {
+      Object.keys(newPasses).forEach(p => {
         if (newPasses[p]) {
           if (new Date(newPasses[p]) > new Date()) isStillVIP = true;
           else isExpired = true;
@@ -415,7 +439,7 @@ async function executeBulkUpdate() {
     document.getElementById('bulk-manage-modal').style.display = 'none';
     document.getElementById('bulk-days').value = '';
     
-    // 🚀 LEAK PATCH: Update RAM instead of re-fetching the database!
+    // LEAK PATCH: Update RAM instead of re-fetching the database!
     usersToUpdate.forEach(user => {
       const userIndex = adminUserList.findIndex(u => u.uid === user.uid);
       if (userIndex !== -1) {
@@ -514,24 +538,31 @@ async function resolveReport(reportId, btnElement) {
 function exportToCSV() {
   if (currentFilteredUsers.length === 0) return showToast("⚠️ No students found to export!");
 
-  let csvContent = "Name,Email,WhatsApp,Date Joined,Param Status,Validity Date\n";
+  // 🚀 FIX: Added "Core Subject" to the column headers
+  let csvContent = "Name,Email,Core Subject,WhatsApp,Date Joined,Param Status,Validity Date\n";
   currentFilteredUsers.forEach(user => {
     const name = (user.name || "Unknown").replace(/,/g, ""); 
     const email = (user.email || "").replace(/,/g, "");
+    
+    // Extract the core subject from Firebase, defaulting to 'sanskrit' if blank
+    const coreSubj = (user.coreSubject || "sanskrit").toUpperCase();
+    
     const whatsapp = (user.whatsapp || "").replace(/,/g, "");
     const joined = user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN') : "Unknown";
     let status = (user.computedStatus === "vip") ? "Active Passes" : "Basic Access";
 
     let activeTags = [];
     const now = new Date();
-    ['combo', 'batch', 'sanskrit', 'general'].forEach(p => {
+    
+    // Updated the array to check the new active passes (bengali, philosophy)
+    ['general', 'sanskrit', 'bengali', 'philosophy', 'batch'].forEach(p => {
       if (user.passes && user.passes[p] && new Date(user.passes[p]) > now) {
         activeTags.push(`${p.toUpperCase()}: ${new Date(user.passes[p]).toLocaleDateString('en-IN')}`);
       }
     });
     const validity = activeTags.length > 0 ? activeTags.join(' | ') : "N/A";
 
-    csvContent += `${name},${email},${whatsapp},${joined},${status},${validity}\n`;
+    csvContent += `${name},${email},${coreSubj},${whatsapp},${joined},${status},${validity}\n`;
   });
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -663,6 +694,7 @@ function renderAdminNotifications() {
   localNotifications.forEach((notif, index) => {
     const style = tagStyles[notif.type] || tagStyles['update'];
     const expiryTag = notif.expiresAt ? `<span style="font-size:0.75rem; color:#9E9E9E; margin-left:8px;">⏳ Expires: ${notif.expiresAt}</span>` : '';
+    const targetTag = (notif.target && notif.target !== 'all') ? `<span style="font-size:0.7rem; background:#E3F2FD; color:#1565C0; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:bold; text-transform:uppercase;">🎯 ${notif.target} Only</span>` : '';
     
     feed.innerHTML += `
       <div style="background: white; border: 1px solid #eee; padding: 16px; border-radius: var(--radius-sm); position: relative;">
@@ -675,6 +707,7 @@ function renderAdminNotifications() {
           <div>
             <span style="font-size:0.75rem; color:#A1887F;">📅 ${new Date(notif.id).toLocaleDateString('en-IN')}</span>
             ${expiryTag}
+            ${targetTag}
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-sm" style="background: transparent; color: #1565C0; border: 1px solid #1565C0; padding: 4px 10px;" onclick="editNotificationLocally(${index})">Edit</button>
@@ -690,6 +723,7 @@ function addNotificationLocally() {
   const title = document.getElementById('notif-title').value.trim();
   const desc = document.getElementById('notif-desc').value.trim();
   const type = document.getElementById('notif-type').value;
+  const target = document.getElementById('notif-target').value;
   const expiresAt = document.getElementById('notif-expiry').value;
   const btnText = document.getElementById('notif-btn-text').value.trim();
   const btnLink = document.getElementById('notif-btn-link').value.trim();
@@ -698,7 +732,7 @@ function addNotificationLocally() {
 
   const newNotif = {
     id: new Date().toISOString(), // Serves as both unique ID and Timestamp
-    title, desc, type, expiresAt, btnText, btnLink
+    title, desc, type, target, expiresAt, btnText, btnLink
   };
 
   localNotifications.unshift(newNotif); // Add to the top
@@ -726,6 +760,7 @@ function editNotificationLocally(index) {
   // Fill the modal with the existing data
   document.getElementById('notif-edit-index').value = index;
   document.getElementById('edit-notif-type').value = notif.type || 'update';
+  document.getElementById('edit-notif-target').value = notif.target || 'all';
   document.getElementById('edit-notif-title').value = notif.title || '';
   document.getElementById('edit-notif-desc').value = notif.desc || '';
   document.getElementById('edit-notif-expiry').value = notif.expiresAt || '';
@@ -745,6 +780,7 @@ function saveEditedNotification() {
 
   // Save changes back to the array
   localNotifications[index].type = document.getElementById('edit-notif-type').value;
+  localNotifications[index].target = document.getElementById('edit-notif-target').value;
   localNotifications[index].title = title;
   localNotifications[index].desc = desc;
   localNotifications[index].expiresAt = document.getElementById('edit-notif-expiry').value;
@@ -813,6 +849,7 @@ function downloadBackup() {
 
 let activityChartInstance = null;
 let subjectChartInstance = null;
+let demographicsChartInstance = null;
 
 function loadAnalyticsEngine() {
   let totalStudents = currentFilteredUsers.length;
@@ -822,33 +859,45 @@ function loadAnalyticsEngine() {
   let dailyActivity = {};
   for(let i=13; i>=0; i--) {
     let d = new Date(); d.setDate(d.getDate() - i);
-    // Standardize the key to match exactly how app.js saves it!
     dailyActivity[d.toLocaleDateString('en-IN')] = 0;
   }
 
-  let subjectCount = { 'Sanskrit (Paper 2)': 0, 'General (Paper 1)': 0, 'Other Topics': 0 };
+  let subjectCount = { 'Sanskrit (Paper 2)': 0, 'Bengali (Paper 2)': 0, 'Philosophy (Paper 2)': 0, 'General (Paper 1)': 0, 'Other Topics': 0 };
+  let demoCount = { 'Sanskrit': 0, 'Bengali': 0, 'Philosophy': 0 };
+  let activePassCounts = { general: 0, sanskrit: 0, bengali: 0, philosophy: 0, batch: 0 };
 
   // 🚀 THE CATEGORIZER DICTIONARIES
   const sktKeywords = ['sanskrit', 'paper 2', 'वैदिक', 'व्याकरण', 'दर्शन', 'साहित्य', 'अन्यानि'];
+  const benKeywords = ['bengali', 'history of language', 'poetry', 'fiction', 'prose', 'drama', 'folk', 'rabindra', 'prosody', 'poetics'];
+  const philKeywords = ['philosophy', 'classical indian', 'classical western', 'ethics', 'contemporary', 'recent', 'social', 'political', 'logic'];
   const p1Keywords = ['paper 1', '1st paper', 'teaching', 'research', 'comprehension', 'communication', 'mathematical', 'logical', 'data', 'ict', 'people', 'higher education'];
 
   // CRUNCH THE NUMBERS IN RAM (0 Firebase Reads!)
   currentFilteredUsers.forEach(user => {
     if (user.computedStatus === 'vip') activeVIPs++;
 
+    // Demographics Breakdown
+    const core = user.coreSubject || 'sanskrit';
+    if (core === 'bengali') demoCount['Bengali']++;
+    else if (core === 'philosophy') demoCount['Philosophy']++;
+    else demoCount['Sanskrit']++;
+
+    // Active Pass Tracking
+    const now = new Date();
+    ['general', 'sanskrit', 'bengali', 'philosophy', 'batch'].forEach(p => {
+      if (user.passes && user.passes[p] && new Date(user.passes[p]) > now) {
+        activePassCounts[p]++;
+      }
+    });
+
     if (user.history && Array.isArray(user.history)) {
       totalTests += user.history.length;
       user.history.forEach(test => {
+        let testDate = test.date; 
         
-        // 🚀 BUG FIX 1: THE DATE PARSER
-        let testDate = test.date; // E.g., "24/4/2026"
-        
-        // If it perfectly matches a key in our 14-day dictionary, count it!
         if (testDate && dailyActivity[testDate] !== undefined) {
             dailyActivity[testDate]++;
-        } 
-        // Fallback for older ISO timestamps
-        else if (test.timestamp) {
+        } else if (test.timestamp) {
            let dObj = new Date(test.timestamp);
            if (!isNaN(dObj)) {
               let key = dObj.toLocaleDateString('en-IN');
@@ -856,21 +905,13 @@ function loadAnalyticsEngine() {
            }
         }
 
-        // 🚀 BUG FIX 2: THE MULTI-LINGUAL SUBJECT CATEGORIZER
         let tName = (test.name || "").toLowerCase();
         
-        // Check Sanskrit array first
-        if (sktKeywords.some(keyword => tName.includes(keyword))) {
-            subjectCount['Sanskrit (Paper 2)']++;
-        } 
-        // Check Paper 1 array second
-        else if (p1Keywords.some(keyword => tName.includes(keyword))) {
-            subjectCount['General (Paper 1)']++;
-        } 
-        // Anything else is Other
-        else {
-            subjectCount['Other Topics']++;
-        }
+        if (sktKeywords.some(keyword => tName.includes(keyword))) subjectCount['Sanskrit (Paper 2)']++;
+        else if (benKeywords.some(keyword => tName.includes(keyword))) subjectCount['Bengali (Paper 2)']++;
+        else if (philKeywords.some(keyword => tName.includes(keyword))) subjectCount['Philosophy (Paper 2)']++;
+        else if (p1Keywords.some(keyword => tName.includes(keyword))) subjectCount['General (Paper 1)']++;
+        else subjectCount['Other Topics']++;
       });
     }
   });
@@ -883,6 +924,15 @@ function loadAnalyticsEngine() {
   
   const filterDropdown = document.getElementById('admin-filter-status');
   document.getElementById('stat-cohort-name').textContent = filterDropdown.options[filterDropdown.selectedIndex].text;
+
+  // POPULATE ACTIVE PASS BREAKDOWN
+  document.getElementById('stat-pass-breakdown').innerHTML = `
+    <div style="background: #E8F5E9; color: #2E7D32; padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Paper 1: ${activePassCounts.general}</div>
+    <div style="background: #E3F2FD; color: #1565C0; padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Sanskrit: ${activePassCounts.sanskrit}</div>
+    <div style="background: #F3E5F5; color: #9C27B0; padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Bengali: ${activePassCounts.bengali}</div>
+    <div style="background: #E0F7FA; color: #00838F; padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Philosophy: ${activePassCounts.philosophy}</div>
+    <div style="background: #FFF3E0; color: #E65100; padding: 8px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Batch: ${activePassCounts.batch}</div>
+  `;
 
   // RENDER LINE CHART
   const ctxActivity = document.getElementById('chart-activity').getContext('2d');
@@ -900,14 +950,26 @@ function loadAnalyticsEngine() {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
   });
 
-  // RENDER PIE CHART
+  // RENDER SUBJECT CHART
   const ctxSubject = document.getElementById('chart-subject').getContext('2d');
   if (subjectChartInstance) subjectChartInstance.destroy();
   subjectChartInstance = new Chart(ctxSubject, {
     type: 'doughnut',
     data: {
       labels: Object.keys(subjectCount),
-      datasets: [{ data: Object.values(subjectCount), backgroundColor: ['#1565C0', '#2E7D32', '#FF9800'], borderWidth: 0 }]
+      datasets: [{ data: Object.values(subjectCount), backgroundColor: ['#1565C0', '#9C27B0', '#00838F', '#2E7D32', '#FF9800'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // RENDER DEMOGRAPHICS CHART
+  const ctxDemo = document.getElementById('chart-demographics').getContext('2d');
+  if (demographicsChartInstance) demographicsChartInstance.destroy();
+  demographicsChartInstance = new Chart(ctxDemo, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(demoCount),
+      datasets: [{ data: Object.values(demoCount), backgroundColor: ['#1565C0', '#9C27B0', '#00838F'], borderWidth: 0 }]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
   });
@@ -935,7 +997,6 @@ function openAdminStats(uid) {
       let testDate = test.date || test.timestamp;
       let displayDate = testDate ? new Date(testDate).toLocaleDateString('en-IN') : 'Unknown Date';
       let scoreText = '';
-      // 🚀 CRASH PATCH: Ensure totalQuestions > 0 to prevent Divide By Zero (NaN) errors!
       if (test.score !== undefined && test.totalQuestions && test.totalQuestions > 0) {
          let percent = Math.round((test.score / test.totalQuestions) * 100);
          totalScore += percent; scoredTests++;
@@ -967,6 +1028,6 @@ switchTab = function(tabName) {
     fetchLiveNotifications();
   }
   if (tabName === 'analytics') {
-    loadAnalyticsEngine(); // 🚀 NEW: Auto-crunch data when opening tab!
+    loadAnalyticsEngine(); 
   }
 };
