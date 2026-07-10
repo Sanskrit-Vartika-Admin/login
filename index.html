@@ -364,6 +364,37 @@
           <button class="btn btn-primary" style="margin-top:0; padding: 8px 16px; font-size: 0.85rem;" onclick="applyQuickDays()">Apply</button>
         </div>
       </div>
+
+      <!-- ⚠️ NEW: Account Warning Zone -->
+      <div style="margin-bottom: 16px; padding: 12px; background: #FFF9C4; border-radius: var(--radius-sm); border: 1px dashed #FBC02D;">
+        <label style="font-size: 0.8rem; font-weight: bold; color: #F57F17; display:block; margin-bottom: 6px;">⚠️ Send Official Warning</label>
+        <textarea id="admin-warning-msg" class="input-field" placeholder="e.g., We noticed unusual login activity. Please secure your account." style="min-height: 60px; margin-bottom: 8px; font-size: 0.85rem;"></textarea>
+        <button id="admin-warning-btn" class="btn btn-sm" style="background: #F57F17; color: white; width: 100%; justify-content: center;">Send Warning Pop-up</button>
+      </div>
+
+      <!-- 🚨 UPGRADED: Account Suspension Zone -->
+      <div style="margin-bottom: 24px; padding: 12px; background: #FFEBEE; border-radius: var(--radius-sm); border: 1px dashed #D32F2F;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #B71C1C;">🚨 Account Suspension</label>
+          <span id="admin-suspend-status" style="font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 50px; background: #E8F5E9; color: #2E7D32;">ACTIVE</span>
+        </div>
+        
+        <div id="suspension-controls">
+          <select id="suspend-reason" class="input-field" style="margin-bottom: 8px; font-size: 0.85rem;">
+            <option value="Pass Sharing Detected">Reason: Pass Sharing Detected</option>
+            <option value="Unusual Login Activity">Reason: Unusual Activity</option>
+            <option value="Payment Dispute">Reason: Payment Dispute</option>
+            <option value="Violation of Terms">Reason: Violation of Terms</option>
+          </select>
+          <select id="suspend-duration" class="input-field" style="margin-bottom: 12px; font-size: 0.85rem;">
+            <option value="1">Duration: 1 Day Ban</option>
+            <option value="3">Duration: 3 Day Ban</option>
+            <option value="5">Duration: 5 Day Ban</option>
+            <option value="permanent">Duration: Permanent Ban</option>
+          </select>
+        </div>
+        <button id="admin-suspend-btn" class="btn btn-sm" style="background: #D32F2F; color: white; width: 100%; justify-content: center;">Suspend Account</button>
+      </div>
       
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button class="btn btn-outline" onclick="document.getElementById('admin-edit-modal').style.display='none'">Cancel</button>

@@ -291,9 +291,32 @@ function filterAndRenderAdminTable() {
     
     let coreBadge = `<span style="border: 1px solid ${coreColor}; color: ${coreColor}; padding: 2px 8px; border-radius: 50px; font-size: 0.7rem; font-weight: bold; background: rgba(255,255,255,0.8);">${coreSubjDisplay}</span>`;
 
+    // 🚀 NEW: Smart Device Tracking Alert (0 Cost!)
+    let sharingFlag = '';
+    if (data.deviceLogs && data.deviceLogs.length > 0) {
+        const last48h = new Date(now.getTime() - (48 * 60 * 60 * 1000));
+        const recentLogs = data.deviceLogs.filter(log => new Date(log.timestamp) > last48h);
+        const uniqueUUIDs = new Set(recentLogs.map(log => log.uuid)).size;
+        if (uniqueUUIDs > 2) {
+            sharingFlag = '<br><span style="background: #FFF9C4; border: 1px solid #FBC02D; color: #F57F17; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; display: inline-block; margin-top: 4px;" title="Multiple unique devices detected in 48h">⚠️ MULTI-DEVICE RISK</span>';
+        }
+    }
+
+    // 🚀 UPGRADED: Smart Suspension Checker
+    let isSusp = false;
+    if (data.suspension && data.suspension.active) {
+      if (data.suspension.expiresAt === 'permanent' || new Date(data.suspension.expiresAt) > now) {
+        isSusp = true;
+      }
+    }
+  
     html += `
       <tr>
-        <td style="font-weight: 600; color: var(--brown);">${escapeHTML(data.name || 'Unknown')}</td>
+        <td style="font-weight: 600; color: var(--brown);">
+          ${escapeHTML(data.name || 'Unknown')}
+          ${isSusp ? '<br><span style="background: #D32F2F; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-top: 4px; display: inline-block;">SUSPENDED</span>' : ''}
+          ${!isSusp ? sharingFlag : ''}
+        </td>
         <td style="color: var(--text-mid); font-size: 0.85rem;">${escapeHTML(data.email)}</td>
         <td>${coreBadge}</td>
         <td>${waLink}</td>
@@ -331,7 +354,106 @@ function openAdminEdit(uid) {
   document.getElementById('admin-pass-batch').value = formatD(p.batch);
 
   document.getElementById('admin-edit-save-btn').onclick = () => saveAdminEdit(uid);
+
+  // 🚀 UPGRADED: Wire up the Warning & Suspension UI
+  document.getElementById('admin-warning-msg').value = user.warningMessage || '';
+  document.getElementById('admin-warning-btn').onclick = () => sendWarning(uid);
+
+  const susp = user.suspension || { active: false };
+  let isActuallySuspended = false;
+  if (susp.active && (susp.expiresAt === 'permanent' || new Date(susp.expiresAt) > new Date())) {
+      isActuallySuspended = true;
+  }
+  
+  const statusBadge = document.getElementById('admin-suspend-status');
+  const suspBtn = document.getElementById('admin-suspend-btn');
+  const suspControls = document.getElementById('suspension-controls');
+  
+  if (isActuallySuspended) {
+      statusBadge.textContent = 'SUSPENDED';
+      statusBadge.style.background = '#FFEBEE';
+      statusBadge.style.color = '#B71C1C';
+      suspControls.style.display = 'none'; // Hide dropdowns if already banned
+      suspBtn.textContent = 'Lift Suspension (Reactivate)';
+      suspBtn.style.background = '#4CAF50';
+      suspBtn.onclick = () => executeSuspension(uid, false);
+  } else {
+      statusBadge.textContent = 'ACTIVE';
+      statusBadge.style.background = '#E8F5E9';
+      statusBadge.style.color = '#2E7D32';
+      suspControls.style.display = 'block'; // Show dropdowns to apply ban
+      suspBtn.textContent = 'Suspend Account';
+      suspBtn.style.background = '#D32F2F';
+      suspBtn.onclick = () => executeSuspension(uid, true);
+  }
+
   document.getElementById('admin-edit-modal').style.display = 'flex';
+}
+
+// 🚀 NEW: Official Warning Engine
+async function sendWarning(uid) {
+  const msg = document.getElementById('admin-warning-msg').value.trim();
+  const btn = document.getElementById('admin-warning-btn');
+  btn.textContent = "Sending..."; btn.disabled = true;
+  
+  try {
+      await db.collection("users").doc(uid).update({ 
+        warningMessage: msg || firebase.firestore.FieldValue.delete() 
+      });
+      showToast(msg ? "✅ Warning Sent to User!" : "✅ Warning Cleared!");
+      
+      const userIndex = adminUserList.findIndex(u => u.uid === uid);
+      if(userIndex !== -1) adminUserList[userIndex].warningMessage = msg;
+  } catch(e) {
+      alert("Error sending warning: " + e.message);
+  } finally {
+      btn.textContent = "Send Warning Pop-up"; btn.disabled = false;
+  }
+}
+
+// 🚀 UPGRADED: Advanced Suspension Engine
+async function executeSuspension(uid, applyingBan) {
+  let updates = {};
+  
+  if (applyingBan) {
+      const reason = document.getElementById('suspend-reason').value;
+      const duration = document.getElementById('suspend-duration').value;
+      let expiresAt = 'permanent';
+      
+      if (duration !== 'permanent') {
+          let d = new Date();
+          d.setDate(d.getDate() + parseInt(duration));
+          expiresAt = d.toISOString();
+      }
+      
+      if(!confirm(`Suspend this account for ${duration} days due to: ${reason}?`)) return;
+      
+      updates = {
+          suspension: { active: true, reason: reason, expiresAt: expiresAt, appliedAt: new Date().toISOString() }
+      };
+  } else {
+      if(!confirm(`Are you sure you want to lift this suspension and reactivate the account?`)) return;
+      updates = { suspension: { active: false } };
+  }
+
+  const btn = document.getElementById('admin-suspend-btn');
+  const originalText = btn.textContent;
+  btn.textContent = "Processing..."; btn.disabled = true;
+
+  try {
+      await db.collection("users").doc(uid).update(updates);
+      showToast(applyingBan ? "🚨 Account Suspended!" : "✅ Account Reactivated!");
+      
+      const userIndex = adminUserList.findIndex(u => u.uid === uid);
+      if(userIndex !== -1) adminUserList[userIndex].suspension = updates.suspension;
+      
+      filterAndRenderAdminTable();
+      document.getElementById('admin-edit-modal').style.display = 'none';
+  } catch(e) {
+      alert("Error updating suspension: " + e.message);
+  } finally {
+      btn.textContent = originalText; btn.disabled = false;
+  }
 }
 
 function applyQuickDays() {
@@ -395,6 +517,80 @@ async function saveAdminEdit(uid) {
     
   } catch (error) { alert(error.message); }
   finally { btn.textContent = "Save Passes"; btn.disabled = false; }
+}
+
+// 🚀 NEW: Official Warning Engine
+async function sendWarning(uid) {
+  const msg = document.getElementById('admin-warning-msg').value.trim();
+  const btn = document.getElementById('admin-warning-btn');
+  btn.textContent = "Sending..."; btn.disabled = true;
+  
+  try {
+      // If msg is empty, it deletes the warning from the database!
+      await db.collection("users").doc(uid).update({ 
+        warningMessage: msg || firebase.firestore.FieldValue.delete() 
+      });
+      showToast(msg ? "✅ Warning Sent to User!" : "✅ Warning Cleared!");
+      
+      const userIndex = adminUserList.findIndex(u => u.uid === uid);
+      if(userIndex !== -1) adminUserList[userIndex].warningMessage = msg;
+  } catch(e) {
+      alert("Error sending warning: " + e.message);
+  } finally {
+      btn.textContent = "Send Warning Pop-up"; btn.disabled = false;
+  }
+}
+
+// 🚀 UPGRADED: Advanced Suspension Engine
+async function executeSuspension(uid, applyingBan) {
+  let updates = {};
+  
+  if (applyingBan) {
+      const reason = document.getElementById('suspend-reason').value;
+      const duration = document.getElementById('suspend-duration').value;
+      let expiresAt = 'permanent';
+      
+      if (duration !== 'permanent') {
+          let d = new Date();
+          d.setDate(d.getDate() + parseInt(duration));
+          expiresAt = d.toISOString();
+      }
+      
+      if(!confirm(`Suspend this account for ${duration} days due to: ${reason}?`)) return;
+      
+      updates = {
+          suspension: {
+              active: true,
+              reason: reason,
+              expiresAt: expiresAt,
+              appliedAt: new Date().toISOString()
+          }
+      };
+  } else {
+      if(!confirm(`Are you sure you want to lift this suspension and reactivate the account?`)) return;
+      updates = {
+          suspension: { active: false } 
+      };
+  }
+
+  const btn = document.getElementById('admin-suspend-btn');
+  const originalText = btn.textContent;
+  btn.textContent = "Processing..."; btn.disabled = true;
+
+  try {
+      await db.collection("users").doc(uid).update(updates);
+      showToast(applyingBan ? "🚨 Account Suspended!" : "✅ Account Reactivated!");
+      
+      const userIndex = adminUserList.findIndex(u => u.uid === uid);
+      if(userIndex !== -1) adminUserList[userIndex].suspension = updates.suspension;
+      
+      filterAndRenderAdminTable();
+      document.getElementById('admin-edit-modal').style.display = 'none';
+  } catch(e) {
+      alert("Error updating suspension: " + e.message);
+  } finally {
+      btn.textContent = originalText; btn.disabled = false;
+  }
 }
 
 // --- BULK UPGRADE ENGINE ---
@@ -1017,6 +1213,25 @@ function openAdminStats(uid) {
   }
   document.getElementById('admin-stats-avg').textContent = (scoredTests > 0 ? Math.round(totalScore / scoredTests) : 0) + '%';
   document.getElementById('admin-stats-history').innerHTML = historyHTML;
+
+  // 📱 Render Device Logs List
+  let logsHTML = '<h4 style="font-size: 0.9rem; color: var(--brown); margin-top: 16px; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px;">📱 Security: Recent Devices</h4>';
+  if (user.deviceLogs && user.deviceLogs.length > 0) {
+      user.deviceLogs.forEach(log => {
+         const d = new Date(log.timestamp).toLocaleString('en-IN', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+         logsHTML += `
+           <div style="display:flex; justify-content:space-between; font-size:0.8rem; background:#fafafa; padding:6px; border-bottom:1px solid #eee;">
+             <span style="color:#1565C0; font-weight:bold;">${escapeHTML(log.info)} <br><span style="font-size:0.65rem; color:#9e9e9e; font-weight:normal;">ID: ${log.uuid}</span></span>
+             <span style="color:var(--text-light); text-align:right;">${d}</span>
+           </div>`;
+      });
+  } else {
+      logsHTML += '<p style="font-size:0.8rem; color:var(--text-light);">No device logs recorded yet.</p>';
+  }
+  
+  // Create a container if it doesn't exist, or append it to history
+  let historyContainer = document.getElementById('admin-stats-history');
+  historyContainer.innerHTML += logsHTML;
   document.getElementById('admin-stats-modal').style.display = 'flex';
 }
 

@@ -46,7 +46,17 @@ body { background-color: var(--bg-color); color: var(--text-dark); }
 .admin-table tr:hover { background: #fdfdfd; }
 
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal-content { width: 90%; max-width: 500px; }
+.modal-content { 
+  width: 90%; 
+  max-width: 500px; 
+  max-height: 85vh; /* 🚀 NEW: Limits the modal height to 85% of the screen */
+  overflow-y: auto; /* 🚀 NEW: Automatically adds a scrollbar if content is too long */
+}
+
+/* 🚀 NEW: Beautiful slim scrollbar specifically for Admin Modals */
+.modal-content::-webkit-scrollbar { width: 6px; }
+.modal-content::-webkit-scrollbar-track { background: var(--bg-color); border-radius: 10px; }
+.modal-content::-webkit-scrollbar-thumb { background: var(--saffron); border-radius: 10px; }
 
 /* Toasts */
 #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
