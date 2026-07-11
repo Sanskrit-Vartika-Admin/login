@@ -110,17 +110,28 @@ async function loadAdminDashboard() {
     let query = db.collection("users");
 
     // --- BUG FIX: SAFER FETCH & AUTO UI SYNC ---
-    if (fetchType === 'basic') {
+    if (fetchType === 'newest_100') {
+      query = query.orderBy('createdAt', 'desc').limit(100);
+      statusDropdown.value = 'all'; 
+    }
+    else if (fetchType === 'basic') {
       query = query.where('accessLevel', '==', 'basic');
-      statusDropdown.value = 'free'; // Auto-sync the UI
+      statusDropdown.value = 'free'; 
     } 
+    else if (fetchType.startsWith('core_')) {
+      // 🚀 NEW: Fetch all students of a specific subject (Active or Free)
+      const subject = fetchType.split('_')[1]; // Extracts 'sanskrit', 'bengali', etc.
+      query = query.where('coreSubject', '==', subject);
+      
+      statusDropdown.value = 'all'; 
+      document.getElementById('admin-filter-subject').value = subject; // Auto-sync the new dropdown!
+    }
     else if (fetchType !== 'all') {
-      // FIXED: Changed '>' to '!=' null. This is much safer and guarantees it catches valid passes!
       query = query.where(`passes.${fetchType}`, '!=', null);
-      statusDropdown.value = fetchType; // Auto-sync the UI
+      statusDropdown.value = fetchType; 
     } 
     else {
-      statusDropdown.value = 'all'; // Auto-sync the UI
+      statusDropdown.value = 'all'; 
     }
 
     const snapshot = await query.get();
@@ -223,10 +234,12 @@ async function fetchSingleUserByEmail() {
 // Attach live search
 document.getElementById('admin-search').addEventListener('input', filterAndRenderAdminTable);
 document.getElementById('admin-filter-status').addEventListener('change', filterAndRenderAdminTable);
+document.getElementById('admin-filter-subject').addEventListener('change', filterAndRenderAdminTable); // 🚀 NEW!
 
 function filterAndRenderAdminTable() {
   const searchQuery = document.getElementById('admin-search').value.toLowerCase();
   const statusFilter = document.getElementById('admin-filter-status').value;
+  const subjectFilter = document.getElementById('admin-filter-subject') ? document.getElementById('admin-filter-subject').value : 'all'; // 🚀 NEW!
   const now = new Date();
 
   currentFilteredUsers = adminUserList.filter(user => {
@@ -239,7 +252,13 @@ function filterAndRenderAdminTable() {
     else if (statusFilter === "free") statusMatch = (user.computedStatus === "free" || user.computedStatus === "expired");
     else statusMatch = (user.passes && user.passes[statusFilter] && new Date(user.passes[statusFilter]) > now);
 
-    return searchMatch && statusMatch;
+    // 🚀 NEW: Filter by Subject!
+    let subjectMatch = false;
+    const userCore = user.coreSubject || 'sanskrit'; // Default fallback
+    if (subjectFilter === "all") subjectMatch = true;
+    else if (userCore === subjectFilter) subjectMatch = true;
+
+    return searchMatch && statusMatch && subjectMatch;
   });
 
   // Sort newest first
@@ -469,12 +488,24 @@ function applyQuickDays() {
   const targetId = document.getElementById('quick-add-target').value;
   if (!days || days <= 0) return showToast("⚠️ Enter a valid number of days");
   
-  const newDate = new Date();
-  newDate.setDate(newDate.getDate() + days);
-  document.getElementById(targetId).value = newDate.toISOString().split('T')[0];
-  showToast(`Calculated: ${days} days added from today!`);
+  // 1. Read what is currently in the date box
+  const currentBoxValue = document.getElementById(targetId).value;
+  let baseDate = new Date(); // Start by defaulting to "Today"
+  
+  if (currentBoxValue) {
+    const existingDate = new Date(currentBoxValue);
+    // 2. SMART LOGIC: If their pass is active (in the future), build on top of it!
+    // If it's expired (in the past), we ignore it and just stick with "Today".
+    if (existingDate > baseDate) {
+      baseDate = existingDate; 
+    }
+  }
+  
+  // 3. Add the days and format the output
+  baseDate.setDate(baseDate.getDate() + days);
+  document.getElementById(targetId).value = baseDate.toISOString().split('T')[0];
+  showToast(`✅ Calculated: ${days} days added successfully!`);
 }
-
 async function saveAdminEdit(uid) {
   const btn = document.getElementById('admin-edit-save-btn');
   btn.textContent = "Saving..."; btn.disabled = true;

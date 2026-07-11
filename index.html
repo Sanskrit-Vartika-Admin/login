@@ -87,7 +87,14 @@
               <label>Database Fetch</label>
               <select id="admin-fetch-type" class="input-field">
                 <option value="all">Fetch All Users (High Cost)</option>
+                <option value="newest_100">Fetch Newest 100 Users (Low Cost)</option>
                 <option value="basic">Fetch Only Free/Basic Users</option>
+                
+                <!-- 🚀 NEW: Fetch by Subject regardless of Pass -->
+                <option value="core_sanskrit">Fetch All Sanskrit Students</option>
+                <option value="core_bengali">Fetch All Bengali Students</option>
+                <option value="core_philosophy">Fetch All Philosophy Students</option>
+                
                 <option value="general" selected>Fetch 1st Paper Pass Users</option>
                 <option value="sanskrit">Fetch Sanskrit Pass Users</option>
                 <option value="bengali">Fetch Bengali Pass Users</option>
@@ -95,8 +102,20 @@
                 <option value="batch">Fetch Batch Pass Users</option>
               </select>
             </div>
+            
+            <!-- 🚀 NEW: Local RAM Subject Filter -->
             <div class="input-group">
-              <label>Filter View</label>
+              <label>Filter Subject</label>
+              <select id="admin-filter-subject" class="input-field">
+                <option value="all">All Subjects</option>
+                <option value="sanskrit">Sanskrit Only</option>
+                <option value="bengali">Bengali Only</option>
+                <option value="philosophy">Philosophy Only</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label>Filter Pass Status</label>
               <select id="admin-filter-status" class="input-field">
                 <option value="all">All Fetched Passes</option>
                 <option value="free">Basic Access (Free/Expired)</option>
