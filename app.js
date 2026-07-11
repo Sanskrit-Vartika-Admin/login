@@ -297,8 +297,16 @@ function filterAndRenderAdminTable() {
         const last48h = new Date(now.getTime() - (48 * 60 * 60 * 1000));
         const recentLogs = data.deviceLogs.filter(log => new Date(log.timestamp) > last48h);
         const uniqueUUIDs = new Set(recentLogs.map(log => log.uuid)).size;
-        if (uniqueUUIDs > 2) {
-            sharingFlag = '<br><span style="background: #FFF9C4; border: 1px solid #FBC02D; color: #F57F17; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; display: inline-block; margin-top: 4px;" title="Multiple unique devices detected in 48h">⚠️ MULTI-DEVICE RISK</span>';
+        if (uniqueUUIDs > 3) {
+            sharingFlag = '<br><span style="background: #FFF9C4; border: 1px solid #FBC02D; color: #F57F17; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; display: inline-block; margin-top: 4px;" title="Multiple unique devices detected in 48h">⚠️ MULTI-DEVICE RISK (>3)</span>';
+        }else {
+       if (uniqueUUIDs > 2) {
+            sharingFlag = '<br><span style="background: #FFF9C4; border: 1px solid #FBC02D; color: #F57F17; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; display: inline-block; margin-top: 4px;" title="Multiple unique devices detected in 48h">⚠️ MULTI-DEVICE RISK (>2)</span>';
+        }else {
+       if (uniqueUUIDs > 1) {
+            sharingFlag = '<br><span style="background: #FFF9C4; border: 1px solid #FBC02D; color: #F57F17; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; display: inline-block; margin-top: 4px;" title="Multiple unique devices detected in 48h">⚠️ MULTI-DEVICE RISK (>1)</span>';
+        }
+        }
         }
     }
 
